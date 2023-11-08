@@ -9,7 +9,7 @@ new g_iWallClimber[MAX_PLAYERS + 1] = {0, ...};
 
 public plugin_init()
 {
-    register_plugin("WallClimber","1.1","Karaulov");
+    register_plugin("WallClimber","1.1f","Karaulov");
     RegisterHookChain(RG_PM_Move, "PM_Move", .post=false);
     RegisterHookChain(RG_PM_AirMove, "PM_Move", .post =false);
     set_task(0.1,"WallClimbSearch");
@@ -203,8 +203,8 @@ stock bool:is_hull_vacant(const Float:origin[3])
 
 stock bool:fm_is_visible(index, const Float:point[3], ignoremonsters = 0) {
 	new Float:start[3], Float:view_ofs[3]
-	pev(index, pev_origin, start)
-	pev(index, pev_view_ofs, view_ofs)
+	get_entvar(index, var_origin, start)
+	get_entvar(index, var_view_ofs, view_ofs)
 	xs_vec_add(start, view_ofs, start)
 
 	engfunc(EngFunc_TraceLine, start, point, ignoremonsters, index, 0)
