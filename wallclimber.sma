@@ -32,7 +32,7 @@ public native_wallclimber_give()
 
     if (g_iWallClimber[0] == 0)
     {
-        for(new i = 1; i < MAX_PLAYERS + 1;i++)
+        for(new i = 0; i < MAX_PLAYERS + 1;i++)
         {
             g_iWallClimber[i] = -1;
         }
@@ -52,7 +52,7 @@ public native_wallclimber_remove()
 
     if (g_iWallClimber[0] == 0)
     {
-        for(new i = 1; i < MAX_PLAYERS + 1;i++)
+        for(new i = 0; i < MAX_PLAYERS + 1;i++)
         {
             g_iWallClimber[i] = -1;
         }
