@@ -29,16 +29,16 @@ public native_wallclimber_give()
     {
         return;
     }
-
+    /* zero player using only for toggle API*/
     if (g_iWallClimber[0] == 0)
     {
         for(new i = 0; i < MAX_PLAYERS + 1;i++)
         {
-            g_iWallClimber[i] = -1;
+            g_iWallClimber[i] = WALLCLIMB_DISABLED;
         }
     }
 
-    g_iWallClimber[id] = 0;
+    g_iWallClimber[id] = WALLCLIMB_WAIT1;
 }
 
 public native_wallclimber_remove()
@@ -54,32 +54,70 @@ public native_wallclimber_remove()
     {
         for(new i = 0; i < MAX_PLAYERS + 1;i++)
         {
-            g_iWallClimber[i] = -1;
+            g_iWallClimber[i] = WALLCLIMB_DISABLED;
         }
     }
 
-    g_iWallClimber[id] = -1;
+    g_iWallClimber[id] = WALLCLIMB_DISABLED;
 }
+
+#define WALLCLIMB_DISABLED -1
+#define WALLCLIMB_WAIT1 0
+#define WALLCLIMB_WAIT2 3
+#define WALLCLIMB_WORK1 1
+#define WALLCLIMB_WORK2 2
+#define WALLCLIMB_PRE_ACTIVE 4
+#define WALLCLIMB_START 5
+#define WALLCLIMB_CHECK_IN_WALL 6
 
 public WallClimbSearch()
 {
     for(new i = 1; i < MAX_PLAYERS + 1;i++)
     {
-        if (g_iWallClimber[i] == 0)
-            g_iWallClimber[i] = 3;
-        if (g_iWallClimber[i] == 1)
-            g_iWallClimber[i] = 2;
-        if (g_iWallClimber[i] == 4)
-            g_iWallClimber[i] = 5;
-        if (g_iWallClimber[i] == 5)
-            g_iWallClimber[i] = 1;
+        if (g_iWallClimber[i] == WALLCLIMB_WAIT1)
+            g_iWallClimber[i] = WALLCLIMB_WAIT2;
+        if (g_iWallClimber[i] == WALLCLIMB_WORK1)
+            g_iWallClimber[i] = WALLCLIMB_WORK2;
+        if (g_iWallClimber[i] == WALLCLIMB_PRE_ACTIVE)
+            g_iWallClimber[i] = WALLCLIMB_START;
+        if (g_iWallClimber[i] == WALLCLIMB_START)
+            g_iWallClimber[i] = WALLCLIMB_WORK1;
     }
     set_task(0.1,"WallClimbSearch");
 }
 
 public PM_Move(const id)
 {
-    if (g_iWallClimber[id] == 1 || g_iWallClimber[id] == 2)
+    if (g_iWallClimber[id] == WALLCLIMB_CHECK_IN_WALL)
+    {
+        g_iWallClimber[id] = WALLCLIMB_WORK1;
+  
+        new Float:flUserOrigin[3];
+        get_pmove(pm_origin,flUserOrigin);
+  
+        if (is_hull_vacant(flUserOrigin))
+        {
+            flUserOrigin[0] += 16.0;
+            if (is_hull_vacant(flUserOrigin))
+            {
+                flUserOrigin[0] -= 32.0;
+                if (is_hull_vacant(flUserOrigin))
+                {
+                    flUserOrigin[0] += 16.0;
+                    flUserOrigin[1] += 16.0;
+                    if (is_hull_vacant(flUserOrigin))
+                    {
+                        flUserOrigin[1] -= 32.0;
+                        if (is_hull_vacant(flUserOrigin))
+                        {
+                            g_iWallClimber[id] = WALLCLIMB_WAIT1;
+                        }
+                    }
+                }
+            }
+        }
+    }
+    if (g_iWallClimber[id] == WALLCLIMB_WORK1 || g_iWallClimber[id] == WALLCLIMB_WORK2)
     {
         new cmd = get_pmove( pm_cmd );
   
@@ -111,66 +149,40 @@ public PM_Move(const id)
   
         if (get_entvar(id,var_flags) & FL_ONGROUND)
         {
-            g_iWallClimber[id] = 0;
+            g_iWallClimber[id] = WALLCLIMB_WAIT1;
         }
     }
-    if (g_iWallClimber[id] == 6)
+    if (g_iWallClimber[id] == WALLCLIMB_WORK2)
     {
-        g_iWallClimber[id] = 1;
-  
-        new Float:flUserOrigin[3];
-        get_pmove(pm_origin,flUserOrigin);
-  
-        if (is_hull_vacant(flUserOrigin))
+        g_iWallClimber[id] = WALLCLIMB_CHECK_IN_WALL;
+    }
+    if (g_iWallClimber[id] == WALLCLIMB_WAIT2)
+    {
+        g_iWallClimber[id] = WALLCLIMB_WAIT1;
+
+        if (is_user_alive(id))
         {
-            flUserOrigin[0] += 16.0;
-            if (is_hull_vacant(flUserOrigin))
+            new iOriginStart[3];
+            new iOriginEnd[3];
+      
+            get_user_origin( id, iOriginStart, Origin_Eyes );
+            get_user_origin( id, iOriginEnd, Origin_AimEndEyes );
+      
+            new iMaxDistance = get_distance(iOriginStart,iOriginEnd);
+            if (iMaxDistance < 40)
             {
-                flUserOrigin[0] -= 32.0;
-                if (is_hull_vacant(flUserOrigin))
+          
+                new Float:fOriginEnd[3];
+                fOriginEnd[0] = iOriginEnd[0] * 1.0;
+                fOriginEnd[1] = iOriginEnd[1] * 1.0;
+                fOriginEnd[2] = iOriginEnd[2] * 1.0;
+          
+                new Float:flUserOrigin[3];
+                get_entvar(id,var_origin,flUserOrigin);
+                if (engfunc(EngFunc_PointContents, fOriginEnd) == CONTENTS_EMPTY && !(get_entvar(id,var_flags) & FL_ONGROUND))
                 {
-                    flUserOrigin[0] += 16.0;
-                    flUserOrigin[1] += 16.0;
-                    if (is_hull_vacant(flUserOrigin))
-                    {
-                        flUserOrigin[1] -= 32.0;
-                        if (is_hull_vacant(flUserOrigin))
-                        {
-                            g_iWallClimber[id] = 0;
-                        }
-                    }
+                    g_iWallClimber[id] = WALLCLIMB_PRE_ACTIVE;
                 }
-            }
-        }
-    }
-    if (g_iWallClimber[id] == 2)
-    {
-        g_iWallClimber[id] = 6;
-    }
-    if (g_iWallClimber[id] == 3 && is_user_alive(id))
-    {
-        g_iWallClimber[id] = 0;
-  
-        new iOriginStart[3];
-        new iOriginEnd[3];
-  
-        get_user_origin( id, iOriginStart, Origin_Eyes );
-        get_user_origin( id, iOriginEnd, Origin_AimEndEyes );
-  
-        new iMaxDistance = get_distance(iOriginStart,iOriginEnd);
-        if (iMaxDistance < 40)
-        {
-      
-            new Float:fOriginEnd[3];
-            fOriginEnd[0] = iOriginEnd[0] * 1.0;
-            fOriginEnd[1] = iOriginEnd[1] * 1.0;
-            fOriginEnd[2] = iOriginEnd[2] * 1.0;
-      
-            new Float:flUserOrigin[3];
-            get_entvar(id,var_origin,flUserOrigin);
-            if (engfunc(EngFunc_PointContents, fOriginEnd) == CONTENTS_EMPTY && !(get_entvar(id,var_flags) & FL_ONGROUND))
-            {
-                g_iWallClimber[id] = 4;
             }
         }
     }
