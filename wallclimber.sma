@@ -3,6 +3,7 @@
 #include <engine>
 #include <fakemeta>
 #include <reapi>
+#include <xs>
 
 new g_iWallClimber[MAX_PLAYERS + 1] = {0, ...};
 
@@ -20,6 +21,15 @@ public plugin_natives()
     register_native("wallclimber_give", "native_wallclimber_give");
     register_native("wallclimber_remove", "native_wallclimber_remove");
 }
+
+#define WALLCLIMB_DISABLED -1
+#define WALLCLIMB_WAIT1 0
+#define WALLCLIMB_WAIT2 3
+#define WALLCLIMB_WORK1 1
+#define WALLCLIMB_WORK2 2
+#define WALLCLIMB_PRE_ACTIVE 4
+#define WALLCLIMB_START 5
+#define WALLCLIMB_CHECK_IN_WALL 6
 
 public native_wallclimber_give()
 {
@@ -61,15 +71,6 @@ public native_wallclimber_remove()
     g_iWallClimber[id] = WALLCLIMB_DISABLED;
 }
 
-#define WALLCLIMB_DISABLED -1
-#define WALLCLIMB_WAIT1 0
-#define WALLCLIMB_WAIT2 3
-#define WALLCLIMB_WORK1 1
-#define WALLCLIMB_WORK2 2
-#define WALLCLIMB_PRE_ACTIVE 4
-#define WALLCLIMB_START 5
-#define WALLCLIMB_CHECK_IN_WALL 6
-
 public WallClimbSearch()
 {
     for(new i = 1; i < MAX_PLAYERS + 1;i++)
@@ -95,20 +96,20 @@ public PM_Move(const id)
         new Float:flUserOrigin[3];
         get_pmove(pm_origin,flUserOrigin);
   
-        if (is_hull_vacant(flUserOrigin))
+        if (fm_is_visible(id, flUserOrigin))
         {
-            flUserOrigin[0] += 16.0;
-            if (is_hull_vacant(flUserOrigin))
+            flUserOrigin[0] += 40.0;
+            if (fm_is_visible(id, flUserOrigin))
             {
-                flUserOrigin[0] -= 32.0;
-                if (is_hull_vacant(flUserOrigin))
+                flUserOrigin[0] -= 80.0;
+                if (fm_is_visible(id, flUserOrigin))
                 {
-                    flUserOrigin[0] += 16.0;
-                    flUserOrigin[1] += 16.0;
-                    if (is_hull_vacant(flUserOrigin))
+                    flUserOrigin[0] += 40.0;
+                    flUserOrigin[1] += 40.0;
+                    if (fm_is_visible(id, flUserOrigin))
                     {
-                        flUserOrigin[1] -= 32.0;
-                        if (is_hull_vacant(flUserOrigin))
+                        flUserOrigin[1] -= 80.0;
+                        if (fm_is_visible(id, flUserOrigin))
                         {
                             g_iWallClimber[id] = WALLCLIMB_WAIT1;
                         }
@@ -187,7 +188,7 @@ public PM_Move(const id)
         }
     }
 }
-
+/*
 stock bool:is_hull_vacant(const Float:origin[3])
 {
     new tr = 0;
@@ -197,4 +198,21 @@ stock bool:is_hull_vacant(const Float:origin[3])
         return true;
     }
     return false;
+}
+*/
+
+stock bool:fm_is_visible(index, const Float:point[3], ignoremonsters = 0) {
+	new Float:start[3], Float:view_ofs[3]
+	pev(index, pev_origin, start)
+	pev(index, pev_view_ofs, view_ofs)
+	xs_vec_add(start, view_ofs, start)
+
+	engfunc(EngFunc_TraceLine, start, point, ignoremonsters, index, 0)
+
+	new Float:fraction
+	get_tr2(0, TR_flFraction, fraction)
+	if (fraction == 1.0)
+		return true
+
+	return false
 }
